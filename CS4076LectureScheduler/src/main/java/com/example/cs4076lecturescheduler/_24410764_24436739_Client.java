@@ -8,6 +8,19 @@ import java.util.List;
 import java.util.Map;
 import javafx.application.Application;
 import static javafx.application.Application.launch;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.control.DatePicker;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
+import javafx.stage.Stage;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
@@ -16,19 +29,6 @@ import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
-import javafx.scene.control.ButtonType;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.DatePicker;
-import javafx.scene.control.Label;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableView;
-import javafx.scene.control.TextArea;
-import javafx.scene.control.TextField;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.VBox;
-import javafx.stage.Stage;
 
 
  class _24410764_24436739_Client extends Application {
@@ -37,19 +37,27 @@ import javafx.stage.Stage;
      private ComboBox<String> timeBox;
      private TextField roomField;
      private TextField moduleField;
-
      private Button sendBtn;
-     private Button stopBtn;
      private Button clearBtn;
-
+     private Button stopBtn;
      private TextArea logArea;
      private Label statusLabel;
-
      private TableView<Row> table;
 
-
-     private final ServerSim server = new ServerSim("LM051-2026");
+     private final ServerSim server = new ServerSim("LM021-2026");
      private boolean stopped = false;
+
+
+
+     private Node buildHeader() {
+         Label title = new Label("Lecture Scheduler Client ");
+         title.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
+         HBox header = new HBox(title);
+         header.setPadding(new Insets(12));
+         header.setAlignment(Pos.CENTER_LEFT);
+         header.setStyle("-fx-background-color: #f2f2f2;");
+         return header;
+     }
 
      @Override
      public void start(Stage stage) {
@@ -61,27 +69,16 @@ import javafx.stage.Stage;
          root.setBottom(buildLog());
 
          Scene scene = new Scene(root, 980, 650);
-         stage.setTitle("Lecture Scheduler Client (Simple Lab)");
+         stage.setTitle("Lecture Scheduler Client ");
          stage.setScene(scene);
          stage.show();
 
          refreshTableFromServer();
      }
 
-     private Node buildHeader() {
-         Label title = new Label("Lecture Scheduler Client (Simple Lab – Network-Style Messages)");
-         title.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
-         HBox header = new HBox(title);
-         header.setPadding(new Insets(12));
-         header.setAlignment(Pos.CENTER_LEFT);
-         header.setStyle("-fx-background-color: #f2f2f2;");
-         return header;
-     }
-
      private Node buildForm() {
          actionBox = new ComboBox<>(FXCollections.observableArrayList("ADD", "REMOVE", "DISPLAY", "OTHER"));
          actionBox.getSelectionModel().selectFirst();
-
          datePicker = new DatePicker();
          timeBox = new ComboBox<>(FXCollections.observableArrayList(
                  "09:00-10:00", "10:00-11:00", "11:00-12:00", "12:00-13:00",
@@ -90,10 +87,9 @@ import javafx.stage.Stage;
          timeBox.getSelectionModel().selectFirst();
 
          roomField = new TextField();
-         roomField.setPromptText("e.g., C105");
-
+         roomField.setPromptText("e.g., CSG001");
          moduleField = new TextField();
-         moduleField.setPromptText("e.g., CS6502");
+         moduleField.setPromptText("e.g., CS4706");
 
          sendBtn = new Button("Send Request");
          stopBtn = new Button("STOP");
@@ -113,16 +109,12 @@ import javafx.stage.Stage;
          int r = 0;
          form.add(new Label("Action:"), 0, r);
          form.add(actionBox, 1, r++);
-
          form.add(new Label("Date:"), 0, r);
          form.add(datePicker, 1, r++);
-
-         form.add(new Label("Time slot:"), 0, r);
+         form.add(new Label("TimeSlot:"), 0, r);
          form.add(timeBox, 1, r++);
-
          form.add(new Label("Room:"), 0, r);
          form.add(roomField, 1, r++);
-
          form.add(new Label("Module:"), 0, r);
          form.add(moduleField, 1, r++);
 
@@ -151,44 +143,40 @@ import javafx.stage.Stage;
          return left;
      }
 
-     private Node buildTable() {
-         table = new TableView<>();
-
-         TableColumn<Row, String> cDate = new TableColumn<>("Date");
-         cDate.setCellValueFactory(d -> d.getValue().date);
-
-         TableColumn<Row, String> cTime = new TableColumn<>("Time");
-         cTime.setCellValueFactory(d -> d.getValue().time);
-
-         TableColumn<Row, String> cRoom = new TableColumn<>("Room");
-         cRoom.setCellValueFactory(d -> d.getValue().room);
-
-         TableColumn<Row, String> cModule = new TableColumn<>("Module");
-         cModule.setCellValueFactory(d -> d.getValue().module);
-
-         table.getColumns().addAll(cDate, cTime, cRoom, cModule);
-         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-
-         VBox center = new VBox(8, new Label("Schedule (TableView)"), table);
-         center.setPadding(new Insets(12));
-         return center;
-     }
-
      private Node buildLog() {
          logArea = new TextArea();
          logArea.setEditable(false);
          logArea.setWrapText(true);
          logArea.setPrefRowCount(6);
 
-         VBox bottom = new VBox(6, new Label("Conversation Log (Client ↔ Server)"), logArea);
+         VBox bottom = new VBox(6, new Label("Conversation Log (Client to Server)"), logArea);
          bottom.setPadding(new Insets(12));
          bottom.setStyle("-fx-background-color: #fafafa; -fx-border-color: #dddddd; -fx-border-width: 1 0 0 0;");
          return bottom;
      }
 
+     private Node buildTable() {
+         table = new TableView<>();
+         TableColumn<Row, String> cDate = new TableColumn<>("Date");
+         cDate.setCellValueFactory(d -> d.getValue().date);
+         TableColumn<Row, String> cTime = new TableColumn<>("Time");
+         cTime.setCellValueFactory(d -> d.getValue().time);
+         TableColumn<Row, String> cRoom = new TableColumn<>("Room");
+         cRoom.setCellValueFactory(d -> d.getValue().room);
+
+         TableColumn<Row, String> cModule = new TableColumn<>("Module");
+         cModule.setCellValueFactory(d -> d.getValue().module);
+         table.getColumns().addAll(cDate, cTime, cRoom, cModule);
+         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+         VBox center = new VBox(8, new Label("Schedule (TableView)"), table);
+         center.setPadding(new Insets(12));
+         return center;
+     }
+
+
      private void onSend() {
          if (stopped) {
-             alertInfo("The connection is stopped (lab simulation). Press Clear to reset.");
+             alertInfo("The connection is stopped. Press Clear to reset.");
              return;
          }
 
@@ -218,32 +206,30 @@ import javafx.stage.Stage;
          refreshTableFromServer();
      }
 
-     private void onStop() {
-         if (stopped) return;
-
-         String request = "STOP||||";
-         log("CLIENT> " + request);
-         String response = server.handle(request);
-         log("SERVER> " + response);
-
-         stopped = true;
-         sendBtn.setDisable(true);
-         statusLabel.setText("Status: TERMINATED (STOP pressed)");
-     }
-
      private void onClear() {
          roomField.clear();
          moduleField.clear();
          datePicker.setValue(null);
          actionBox.getSelectionModel().selectFirst();
          timeBox.getSelectionModel().selectFirst();
-
          stopped = false;
          sendBtn.setDisable(false);
          statusLabel.setText("Status: Ready");
 
          log("--- cleared ---");
      }
+     private void onStop() {
+         if (stopped) return;
+         String request = "STOP||||";
+         log("CLIENT> " + request);
+         String response = server.handle(request);
+         log("SERVER> " + response);
+         stopped = true;
+         sendBtn.setDisable(true);
+         statusLabel.setText("Status: TERMINATED (STOP pressed)");
+     }
+
+
 
      private String buildRequest(String action, LocalDate date, String time, String room, String module) {
 
@@ -252,12 +238,9 @@ import javafx.stage.Stage;
          String r = (room == null) ? "" : room.trim();
          String m = (module == null) ? "" : module.trim();
 
-
          if ("DISPLAY".equals(action)) return "DISPLAY||||";
          if ("OTHER".equals(action)) return "OTHER||||";
-
          if ("ADD".equals(action)) {
-
              if (d.isEmpty() || t.isEmpty() || r.isEmpty() || m.isEmpty()) {
                  alertWarn("ADD needs Date, Time, Room and Module.");
                  return "DISPLAY||||";
@@ -272,10 +255,30 @@ import javafx.stage.Stage;
              }
              return "REMOVE|" + d + "|" + t + "||";
          }
-
          return "OTHER||||";
      }
+     public static class Lecture {
+         final LocalDate date;
+         final String time;
+         final String room;
+         final String module;
 
+         Lecture(LocalDate date, String time, String room, String module) {
+             this.date = date;
+             this.time = time;
+             this.room = room;
+             this.module = module;
+         }
+
+         String slotKey() {
+             return date + "|" + time;
+         }
+
+         @Override
+         public String toString() {
+             return date + " " + time + " Room " + room + " (" + module + ")";
+         }
+     }
      private void refreshTableFromServer() {
          List<Lecture> lectures = server.getAllLecturesSorted();
          List<Row> rows = new ArrayList<>();
@@ -316,29 +319,6 @@ import javafx.stage.Stage;
          }
      }
 
-
-     public static class Lecture {
-         final LocalDate date;
-         final String time;
-         final String room;
-         final String module;
-
-         Lecture(LocalDate date, String time, String room, String module) {
-             this.date = date;
-             this.time = time;
-             this.room = room;
-             this.module = module;
-         }
-
-         String slotKey() { return date + "|" + time; }
-
-         @Override
-         public String toString() {
-             return date + " " + time + " Room " + room + " (" + module + ")";
-         }
-     }
-
-
      public static class ServerSim {
          private final String courseCode;
          private final Map<String, Lecture> schedule = new HashMap<>();
@@ -351,19 +331,13 @@ import javafx.stage.Stage;
              try {
                  String[] parts = request.split("\\|", -1);
                  String action = parts[0].trim().toUpperCase();
-
                  if ("STOP".equals(action)) {
                      return "TERMINATE|Server confirms termination.";
                  }
-
-
-
                  if ("DISPLAY".equals(action)) {
                      return "OK|Displayed schedule.";
                  }
-
                  if ("ADD".equals(action)) {
-
                      LocalDate date = LocalDate.parse(parts[1]);
                      String time = parts[2].trim();
                      String room = parts[3].trim();
@@ -377,7 +351,6 @@ import javafx.stage.Stage;
                  }
 
                  if ("REMOVE".equals(action)) {
-
                      LocalDate date = LocalDate.parse(parts[1]);
                      String time = parts[2].trim();
                      String key = date + "|" + time;
@@ -390,8 +363,7 @@ import javafx.stage.Stage;
                  }
 
 
-
-             }  catch (Exception e) {
+             } catch (Exception e) {
                  return "ERROR|Bad request: " + e.getMessage();
              }
              return null;
@@ -408,7 +380,4 @@ import javafx.stage.Stage;
          launch(args);
      }
  }
-
-
-
 
