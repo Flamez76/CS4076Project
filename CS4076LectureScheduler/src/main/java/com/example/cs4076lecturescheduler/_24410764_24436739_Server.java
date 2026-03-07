@@ -1,4 +1,4 @@
 package com.example.cs4076lecturescheduler;
 
-public class _24436739_Client {
+public class _24410764_24436739_Server {
 }
