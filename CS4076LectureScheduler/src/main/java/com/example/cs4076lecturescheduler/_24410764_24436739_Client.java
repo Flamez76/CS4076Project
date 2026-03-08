@@ -29,6 +29,10 @@ import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import java.net.Socket;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
 
 
  public class _24410764_24436739_Client extends Application {
@@ -44,9 +48,22 @@ import javafx.scene.control.Button;
      private Label statusLabel;
      private TableView<Row> table;
 
-     private final ServerSim server = new ServerSim("LM021-2026");
+     private Socket socket;
+     private BufferedReader in;
+     private PrintWriter out;
      private boolean stopped = false;
 
+
+     public void connectToServer() {
+         try{
+             socket = new Socket("localhost", 5000);
+             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+             out = new PrintWriter(socket.getOutputStream(), true);
+             log("Connected to server");
+         } catch(Exception e){
+             log("Connection failed: " + e.getMessage());
+         }
+     }
 
      private Node buildHeader() {
          Label title = new Label("Lecture Scheduler Client ");
@@ -71,8 +88,7 @@ import javafx.scene.control.Button;
          stage.setTitle("Lecture Scheduler Client ");
          stage.setScene(scene);
          stage.show();
-
-         refreshTableFromServer();
+         connectToServer();
      }
 
      private Node buildForm() {
@@ -187,22 +203,26 @@ import javafx.scene.control.Button;
 
          String request = buildRequest(action, date, time, room, module);
 
-         log("CLIENT> " + request);
-         String response = server.handle(request);
-         log("SERVER> " + response);
+        try {
+            log("CLIENT> " + request);
+            out.println(request);
+            String response = in.readLine();
+            log("SERVER> " + response);
 
-         if (response.startsWith("OK|")) {
-             statusLabel.setText("Status: OK");
-         } else if (response.startsWith("ERROR|")) {
-             statusLabel.setText("Status: ERROR");
-         } else if (response.startsWith("TERMINATE|")) {
-             statusLabel.setText("Status: TERMINATED");
-             stopped = true;
-             sendBtn.setDisable(true);
-         }
+            if (response.startsWith("OK|")) {
+                statusLabel.setText("Status: OK");
+            } else if (response.startsWith("ERROR|")) {
+                statusLabel.setText("Status: ERROR");
+            } else if (response.startsWith("TERMINATE|")) {
+                statusLabel.setText("Status: TERMINATED");
+                stopped = true;
+                sendBtn.setDisable(true);
+            }
+        } catch(Exception e){
+            log("Communication error: " + e.getMessage());
+        }
 
 
-         refreshTableFromServer();
      }
 
      private void onClear() {
@@ -222,8 +242,13 @@ import javafx.scene.control.Button;
          if (stopped) return;
          String request = "STOP||||";
          log("CLIENT> " + request);
-         String response = server.handle(request);
-         log("SERVER> " + response);
+         out.println(request);
+         try {
+             String response = in.readLine();
+             log("SERVER> " + response);
+         }  catch(Exception e){
+             log("Error recieving response");
+         }
          stopped = true;
          sendBtn.setDisable(true);
          statusLabel.setText("Status: TERMINATED (STOP pressed)");
@@ -280,14 +305,7 @@ import javafx.scene.control.Button;
          }
      }
 
-     private void refreshTableFromServer() {
-         List<Lecture> lectures = server.getAllLecturesSorted();
-         List<Row> rows = new ArrayList<>();
-         for (Lecture l : lectures) {
-             rows.add(new Row(l.date.toString(), l.time, l.room, l.module));
-         }
-         table.setItems(FXCollections.observableArrayList(rows));
-     }
+
 
      private void log(String msg) {
          logArea.appendText(msg + System.lineSeparator());
@@ -320,62 +338,7 @@ import javafx.scene.control.Button;
          }
      }
 
-     public static class ServerSim {
-         private final String courseCode;
-         private final Map<String, Lecture> schedule = new HashMap<>();
 
-         public ServerSim(String courseCode) {
-             this.courseCode = courseCode;
-         }
-
-         public String handle(String request) {
-             try {
-                 String[] parts = request.split("\\|", -1);
-                 String action = parts[0].trim().toUpperCase();
-                 if ("STOP".equals(action)) {
-                     return "TERMINATE|Server confirms termination.";
-                 }
-                 if ("DISPLAY".equals(action)) {
-                     return "OK|Displayed schedule.";
-                 }
-                 if ("ADD".equals(action)) {
-                     LocalDate date = LocalDate.parse(parts[1]);
-                     String time = parts[2].trim();
-                     String room = parts[3].trim();
-                     String module = parts[4].trim();
-
-                     Lecture newL = new Lecture(date, time, room, module);
-                     String key = newL.slotKey();
-
-                     schedule.put(key, newL);
-                     return "OK|Added: " + newL;
-                 }
-
-                 if ("REMOVE".equals(action)) {
-                     LocalDate date = LocalDate.parse(parts[1]);
-                     String time = parts[2].trim();
-                     String key = date + "|" + time;
-
-                     Lecture removed = schedule.remove(key);
-                     if (removed == null) {
-                         return "ERROR|No lecture found at " + date + " " + time + " to remove.";
-                     }
-                     return "OK|Removed: " + removed;
-                 }
-
-
-             } catch (Exception e) {
-                 return "ERROR|Bad request: " + e.getMessage();
-             }
-             return null;
-         }
-
-         public List<Lecture> getAllLecturesSorted() {
-             List<Lecture> all = new ArrayList<>(schedule.values());
-             all.sort(Comparator.comparing((Lecture l) -> l.date).thenComparing(l -> l.time));
-             return all;
-         }
-     }
 
      public static void main(String[] args) {
          launch(args);
