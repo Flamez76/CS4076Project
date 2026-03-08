@@ -31,7 +31,7 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 
 
- class _24410764_24436739_Client extends Application {
+ public class _24410764_24436739_Client extends Application {
      private ComboBox<String> actionBox;
      private DatePicker datePicker;
      private ComboBox<String> timeBox;
@@ -46,7 +46,6 @@ import javafx.scene.control.Button;
 
      private final ServerSim server = new ServerSim("LM021-2026");
      private boolean stopped = false;
-
 
 
      private Node buildHeader() {
@@ -218,6 +217,7 @@ import javafx.scene.control.Button;
 
          log("--- cleared ---");
      }
+
      private void onStop() {
          if (stopped) return;
          String request = "STOP||||";
@@ -228,7 +228,6 @@ import javafx.scene.control.Button;
          sendBtn.setDisable(true);
          statusLabel.setText("Status: TERMINATED (STOP pressed)");
      }
-
 
 
      private String buildRequest(String action, LocalDate date, String time, String room, String module) {
@@ -257,6 +256,7 @@ import javafx.scene.control.Button;
          }
          return "OTHER||||";
      }
+
      public static class Lecture {
          final LocalDate date;
          final String time;
@@ -279,6 +279,7 @@ import javafx.scene.control.Button;
              return date + " " + time + " Room " + room + " (" + module + ")";
          }
      }
+
      private void refreshTableFromServer() {
          List<Lecture> lectures = server.getAllLecturesSorted();
          List<Row> rows = new ArrayList<>();
