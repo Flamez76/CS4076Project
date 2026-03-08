@@ -1,3 +1,5 @@
+package com.example.cs4076lecturescheduler;
+
 import java.io.*;
 import java.net.*;
 import java.util.*;
