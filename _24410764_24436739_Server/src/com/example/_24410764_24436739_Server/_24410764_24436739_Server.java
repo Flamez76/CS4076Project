@@ -11,7 +11,7 @@ private ServerSocket serverSocket;
 private Socket clientSocket;
 private BufferedReader input;
 private PrintWriter output;
-private HashMap<String, String> schedule = new HashMap<>();
+private HashMap<String, Lecture> schedule = new HashMap<>();
 private Set<String> modules = new HashSet<>();
 
 public void startServer() {
@@ -28,6 +28,23 @@ try{
     handleClient();
     } catch (IOException e){
     e.printStackTrace();
+    }
+   }
+   private static class Lecture {
+    String date;
+    String time;
+    String room;
+    String module;
+
+    Lecture(String date, String time, String room, String module) {
+        this.date = date;
+        this.time = time;
+        this.room = room;
+        this.module = module;
+    }
+    @Override
+       public String toString() {
+        return module + " in "+ room;
     }
    }
     private void handleClient() {
@@ -95,7 +112,13 @@ try{
         if (schedule.containsKey(key)) {
             return "ERROR|Clash: Lecture already exists at this time";
         }
-        schedule.put(key, module + " in " + room);
+        for(Lecture lecture : schedule.values()){
+            if(lecture.room.equals(room) && lecture.time.equals(time)){
+                return "ERROR|Room clash: " + room + " is already booked at " + time + " by " + lecture.module;
+            }
+        }
+        Lecture newLecture = new Lecture(date, time, room, module);
+        schedule.put(key, newLecture);
         modules.add(module);
         return "OK|Lecture added" + module + " in " + room + " on " + date + "at" + time;
        }
@@ -104,11 +127,11 @@ try{
 
             String date = parts[1];
             String time = parts[2];
-            String key = date + "|" + time;
+            String key = date + "-" + time;
 
-            String lectureInfo = schedule.get(key);
+            Lecture lecture = schedule.get(key);
             if (schedule.remove(key) != null) {
-                return "OK|Lecture removed - freed slot:" + date + " at " + time + " (" +  lectureInfo + ")";
+                return "OK|Lecture removed - freed slot:" + date + " at " + time + " (" + lecture + ")";
             }
             return "ERROR|No Lecture found at " + date + " at " + time;
        }
@@ -117,12 +140,19 @@ try{
                 return "OK|No schedule found";
             }
             StringBuilder builder = new StringBuilder();
-            for(String key: schedule.keySet()){
-                builder.append(key) .append(" -> ") .append(schedule.get(key)).append("\n");
+            for(Lecture lecture: schedule.values()){
+              builder.append(lecture.date)
+                      .append(",")
+                      .append(lecture.time)
+                      .append(",")
+                      .append(lecture.room)
+                      .append(",")
+                      .append(lecture.module)
+                      .append(";");
             }
             return builder.toString();
       }
-      public class IncorrectActionException extends Exception {
+      public static class IncorrectActionException extends Exception {
         public IncorrectActionException(String message) {
             super(message);
         }
