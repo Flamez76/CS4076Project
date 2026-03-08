@@ -33,7 +33,8 @@ import java.net.Socket;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
-
+import java.net.Socket;
+import javafx.application.Platform;
 
  public class _24410764_24436739_Client extends Application {
      private ComboBox<String> actionBox;
@@ -55,14 +56,16 @@ import java.io.PrintWriter;
 
 
      public void connectToServer() {
-         try{
-             socket = new Socket("localhost", 5000);
-             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-             out = new PrintWriter(socket.getOutputStream(), true);
-             log("Connected to server");
-         } catch(Exception e){
-             log("Connection failed: " + e.getMessage());
-         }
+         new Thread(() -> {
+             try {
+                 socket = new Socket("localhost", 5000);
+                 in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                 out = new PrintWriter(socket.getOutputStream(), true);
+                 Platform.runLater(() -> log("Connected to server"));
+             } catch (Exception e) {
+                 Platform.runLater(() -> log("Connection failed: " + e.getMessage()));
+             }
+         }).start();
      }
 
      private Node buildHeader() {
@@ -202,6 +205,7 @@ import java.io.PrintWriter;
          String module = moduleField.getText();
 
          String request = buildRequest(action, date, time, room, module);
+         if(request == null) return;
 
         try {
             log("CLIENT> " + request);
@@ -210,9 +214,13 @@ import java.io.PrintWriter;
             log("SERVER> " + response);
 
             if (response.startsWith("OK|")) {
+                String payload = response.substring(3);
                 statusLabel.setText("Status: OK");
+                alertInfo("Success: " + payload);
             } else if (response.startsWith("ERROR|")) {
+                String errorMsg = response.substring(6);
                 statusLabel.setText("Status: ERROR");
+                alertWarn("Server Error: " + errorMsg);
             } else if (response.startsWith("TERMINATE|")) {
                 statusLabel.setText("Status: TERMINATED");
                 stopped = true;
@@ -267,7 +275,7 @@ import java.io.PrintWriter;
          if ("ADD".equals(action)) {
              if (d.isEmpty() || t.isEmpty() || r.isEmpty() || m.isEmpty()) {
                  alertWarn("ADD needs Date, Time, Room and Module.");
-                 return "DISPLAY||||";
+                 return null;
              }
              return "ADD|" + d + "|" + t + "|" + r + "|" + m;
          }
@@ -275,11 +283,11 @@ import java.io.PrintWriter;
          if ("REMOVE".equals(action)) {
              if (d.isEmpty() || t.isEmpty()) {
                  alertWarn("REMOVE needs Date and Time.");
-                 return "DISPLAY||||";
+                 return null;
              }
              return "REMOVE|" + d + "|" + t + "||";
          }
-         return "OTHER||||";
+         return null;
      }
 
      public static class Lecture {

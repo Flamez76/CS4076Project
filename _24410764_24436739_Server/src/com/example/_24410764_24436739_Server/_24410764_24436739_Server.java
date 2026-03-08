@@ -12,6 +12,7 @@ private Socket clientSocket;
 private BufferedReader input;
 private PrintWriter output;
 private HashMap<String, String> schedule = new HashMap<>();
+private Set<String> modules = new HashSet<>();
 
 public void startServer() {
 try{
@@ -43,7 +44,7 @@ try{
                     output.println(response);
                 }
                 catch (IncorrectActionException e) {
-                    output.println("ERROR: " + e.getMessage());
+                    output.println("ERROR| " + e.getMessage());
                 }
 
             }
@@ -56,10 +57,11 @@ try{
     }
     private String processRequest(String message) throws IncorrectActionException {
         String[] parts = message.split("\\|");
-        String action = parts[0];
-        if(parts.length < 1){
+
+        if(parts.length < 1 || parts[0].isEmpty()) {
             throw new IncorrectActionException("Invalid action");
         }
+        String action = parts[0];
         switch (action.toLowerCase()) {
 
             case "add":
@@ -71,32 +73,44 @@ try{
             case "display":
                 return displaySchedule();
 
+            case "other":
+                throw new IncorrectActionException("Action 'OTHER' is not supported by this server");
             default:
-                throw new IncorrectActionException("Action not supported: " + action);
+                throw new IncorrectActionException("Unknown action: " +  action);
+
         }
        }
-       private String addLecture(String[] parts) {
+       private String addLecture(String[] parts) throws IncorrectActionException {
+        if (parts.length < 5) throw new IncorrectActionException("ADD requires Date, Time, Room and Module");
         String date = parts[1];
         String time = parts[2];
         String room = parts[3];
         String module = parts[4];
+
+        if(!modules.contains(module) && modules.size()>= 5){
+            return "ERROR| Module limit reached";
+        }
 
         String key = date + "-" + time;
         if (schedule.containsKey(key)) {
             return "ERROR|Clash: Lecture already exists at this time";
         }
         schedule.put(key, module + " in " + room);
-        return "OK|Lecture added";
+        modules.add(module);
+        return "OK|Lecture added" + module + " in " + room + " on " + date + "at" + time;
        }
-       private String removeLecture(String[] parts) {
+       private String removeLecture(String[] parts) throws IncorrectActionException {
+            if(parts.length < 3) throw new IncorrectActionException("REMOVE requires Date and Time");
+
             String date = parts[1];
             String time = parts[2];
+            String key = date + "|" + time;
 
-            String key = date + "-" + time;
+            String lectureInfo = schedule.get(key);
             if (schedule.remove(key) != null) {
-                return "OK|Lecture removed";
+                return "OK|Lecture removed - freed slot:" + date + " at " + time + " (" +  lectureInfo + ")";
             }
-            return "ERROR|No Lecture found to be removed";
+            return "ERROR|No Lecture found at " + date + " at " + time;
        }
        private String displaySchedule(){
             if(schedule.isEmpty()){
