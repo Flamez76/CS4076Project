@@ -33,7 +33,6 @@ import java.net.Socket;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
-import java.net.Socket;
 import javafx.application.Platform;
 
  public class _24410764_24436739_Client extends Application {
@@ -56,12 +55,16 @@ import javafx.application.Platform;
 
 
      public void connectToServer() {
+        sendBtn.setDisable(true);
          new Thread(() -> {
              try {
                  socket = new Socket("localhost", 5000);
                  in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                  out = new PrintWriter(socket.getOutputStream(), true);
-                 Platform.runLater(() -> log("Connected to server"));
+                 Platform.runLater(() -> {
+                     log("Connected to server");
+                     sendBtn.setDisable(false);
+                 });
              } catch (Exception e) {
                  Platform.runLater(() -> log("Connection failed: " + e.getMessage()));
              }
@@ -216,7 +219,11 @@ import javafx.application.Platform;
             if (response.startsWith("OK|")) {
                 String payload = response.substring(3);
                 statusLabel.setText("Status: OK");
-                alertInfo("Success: " + payload);
+                if("DISPLAY".equals(action)) {
+                    parseAndDisplaySchedule(payload);
+                } else {
+                    alertInfo("Success: " + payload);
+                }
             } else if (response.startsWith("ERROR|")) {
                 String errorMsg = response.substring(6);
                 statusLabel.setText("Status: ERROR");
@@ -233,6 +240,27 @@ import javafx.application.Platform;
 
      }
 
+     private void parseAndDisplaySchedule(String payload) {
+         table.getItems().clear();
+         if(payload.equals("No Schedule found")) {
+             alertInfo("No schedule found");
+             return;
+         }
+         String[] entries = payload.split(";");
+         for(String entry : entries) {
+             if(entry.isEmpty()) continue;
+             String[] fields = entry.split(",");
+             if(fields.length == 4) {
+                 table.getItems().add(new Row(
+                         fields[0],
+                         fields[1],
+                         fields[2],
+                         fields[3]
+                 ));
+             }
+         }
+     }
+
      private void onClear() {
          roomField.clear();
          moduleField.clear();
@@ -240,7 +268,9 @@ import javafx.application.Platform;
          actionBox.getSelectionModel().selectFirst();
          timeBox.getSelectionModel().selectFirst();
          stopped = false;
-         sendBtn.setDisable(false);
+         if(out != null) {
+             sendBtn.setDisable(false);
+         }
          statusLabel.setText("Status: Ready");
 
          log("--- cleared ---");
@@ -289,31 +319,6 @@ import javafx.application.Platform;
          }
          return null;
      }
-
-     public static class Lecture {
-         final LocalDate date;
-         final String time;
-         final String room;
-         final String module;
-
-         Lecture(LocalDate date, String time, String room, String module) {
-             this.date = date;
-             this.time = time;
-             this.room = room;
-             this.module = module;
-         }
-
-         String slotKey() {
-             return date + "|" + time;
-         }
-
-         @Override
-         public String toString() {
-             return date + " " + time + " Room " + room + " (" + module + ")";
-         }
-     }
-
-
 
      private void log(String msg) {
          logArea.appendText(msg + System.lineSeparator());

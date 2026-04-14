@@ -61,7 +61,7 @@ try{
                     output.println(response);
                 }
                 catch (IncorrectActionException e) {
-                    output.println("ERROR| " + e.getMessage());
+                    output.println("ERROR|" + e.getMessage());
                 }
 
             }
@@ -105,7 +105,7 @@ try{
         String module = parts[4];
 
         if(!modules.contains(module) && modules.size()>= 5){
-            return "ERROR| Module limit reached";
+            return "ERROR|Module limit reached";
         }
 
         String key = date + "-" + time;
@@ -120,7 +120,7 @@ try{
         Lecture newLecture = new Lecture(date, time, room, module);
         schedule.put(key, newLecture);
         modules.add(module);
-        return "OK|Lecture added" + module + " in " + room + " on " + date + "at" + time;
+        return "OK|Lecture added: " + module + " in " + room + " on " + date + " at " + time;
        }
        private String removeLecture(String[] parts) throws IncorrectActionException {
             if(parts.length < 3) throw new IncorrectActionException("REMOVE requires Date and Time");
@@ -139,7 +139,7 @@ try{
             if(schedule.isEmpty()){
                 return "OK|No schedule found";
             }
-            StringBuilder builder = new StringBuilder();
+            StringBuilder builder = new StringBuilder("OK|");
             for(Lecture lecture: schedule.values()){
               builder.append(lecture.date)
                       .append(",")
