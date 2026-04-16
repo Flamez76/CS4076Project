@@ -11,7 +11,8 @@ private ServerSocket serverSocket;
 private Socket clientSocket;
 private BufferedReader input;
 private PrintWriter output;
-private HashMap<String, String> schedule = new HashMap<>();
+private HashMap<String, Lecture> schedule = new HashMap<>();
+private Set<String> modules = new  HashSet<>();
 
 public void startServer() {
 try{
@@ -29,6 +30,23 @@ try{
     e.printStackTrace();
     }
    }
+   private static class Lecture{
+    String date;
+    String time;
+    String room;
+    String module;
+    Lecture(String date, String time, String room, String module){
+        this.date = date;
+        this.time = time;
+        this.room = room;
+        this.module = module;
+    }
+    @Override
+    public String toString(){
+        return module + " in " + room;
+    }
+
+   }
     private void handleClient() {
         try {
             String message;
@@ -43,7 +61,7 @@ try{
                     output.println(response);
                 }
                 catch (IncorrectActionException e) {
-                    output.println("ERROR: " + e.getMessage());
+                    output.println("ERROR|" + e.getMessage());
                 }
 
             }
@@ -57,7 +75,7 @@ try{
     private String processRequest(String message) throws IncorrectActionException {
         String[] parts = message.split("\\|");
         String action = parts[0];
-        if(parts.length < 1){
+        if(parts.length < 1 || parts[0].isEmpty()){
             throw new IncorrectActionException("Invalid action");
         }
         switch (action.toLowerCase()) {
@@ -71,24 +89,40 @@ try{
             case "display":
                 return displaySchedule();
 
+            case "other":
+                    throw new IncorrectActionException("Action 'OTHER' is not supported by this server");
+
             default:
                 throw new IncorrectActionException("Action not supported: " + action);
         }
        }
-       private String addLecture(String[] parts) {
+       private String addLecture(String[] parts) throws IncorrectActionException {
+        if(parts.length < 5) throw new IncorrectActionException("Invalid action");
         String date = parts[1];
         String time = parts[2];
         String room = parts[3];
         String module = parts[4];
 
+       if(!modules.contains(module) && modules.size() >= 5){
+           return "ERROR|Module limit reached: maximum of 5 modules allowed per course";
+       }
+
         String key = date + "-" + time;
         if (schedule.containsKey(key)) {
-            return "ERROR|Clash: Lecture already exists at this time";
+            return "ERROR|Time Clash: Lecture already exists at this time";
         }
-        schedule.put(key, module + " in " + room);
-        return "OK|Lecture added";
+         for(Lecture lecture : schedule.values()){
+             if(lecture.room.equals(room) && lecture.time.equals(time)){
+                 return "ERROR|Room Clash: " + room + " is already book at " + time + " by " + lecture.module;
+             }
+         }
+         Lecture lecture = new Lecture(date, time, room, module);
+         schedule.put(key, lecture);
+         modules.add(module);
+         return "OK|Lecture added: " + module + " in " + room + " on " + date + " at " + time;
        }
-       private String removeLecture(String[] parts) {
+       private String removeLecture(String[] parts) throws IncorrectActionException {
+            if(parts.length < 3) throw new IncorrectActionException("REMOVE requires Date and Time");
             String date = parts[1];
             String time = parts[2];
 
@@ -98,17 +132,25 @@ try{
             }
             return "ERROR|No Lecture found to be removed";
        }
-       private String displaySchedule(){
+       private String displaySchedule() {
             if(schedule.isEmpty()){
                 return "OK|No schedule found";
             }
-            StringBuilder builder = new StringBuilder();
-            for(String key: schedule.keySet()){
-                builder.append(key) .append(" -> ") .append(schedule.get(key)).append("\n");
+
+            StringBuilder builder = new StringBuilder("OK|");
+            for(Lecture lecture: schedule.values()){
+                builder.append(lecture.date)
+                        .append(",")
+                        .append(lecture.time)
+                        .append(",")
+                        .append(lecture.room)
+                        .append(",")
+                        .append(lecture.module)
+                        .append(";");
             }
             return builder.toString();
       }
-      public class IncorrectActionException extends Exception {
+      public static class IncorrectActionException extends Exception {
         public IncorrectActionException(String message) {
             super(message);
         }
