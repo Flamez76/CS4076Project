@@ -1,11 +1,9 @@
 package com.example.cs4076lecturescheduler;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.time.format.TextStyle;
+import java.util.*;
+
 import javafx.application.Application;
 import static javafx.application.Application.launch;
 import javafx.scene.control.ButtonType;
@@ -46,7 +44,7 @@ import javafx.application.Platform;
      private Button stopBtn;
      private TextArea logArea;
      private Label statusLabel;
-     private TableView<Row> table;
+     private TableView<String[]> table;
 
      private Socket socket;
      private BufferedReader in;
@@ -103,7 +101,7 @@ import javafx.application.Platform;
          datePicker = new DatePicker();
          timeBox = new ComboBox<>(FXCollections.observableArrayList(
                  "09:00-10:00", "10:00-11:00", "11:00-12:00", "12:00-13:00",
-                 "14:00-15:00", "15:00-16:00", "16:00-17:00", "17:00-18:00"
+                      "14:00-15:00", "15:00-16:00", "16:00-17:00", "17:00-18:00"
          ));
          timeBox.getSelectionModel().selectFirst();
 
@@ -178,20 +176,35 @@ import javafx.application.Platform;
 
      private Node buildTable() {
          table = new TableView<>();
-         TableColumn<Row, String> cDate = new TableColumn<>("Date");
-         cDate.setCellValueFactory(d -> d.getValue().date);
-         TableColumn<Row, String> cTime = new TableColumn<>("Time");
-         cTime.setCellValueFactory(d -> d.getValue().time);
-         TableColumn<Row, String> cRoom = new TableColumn<>("Room");
-         cRoom.setCellValueFactory(d -> d.getValue().room);
+        TableColumn<String[], String> timeCol = new TableColumn<>("Time");
+        timeCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue()[0]));
+        timeCol.setPrefWidth(120);
+        table.getColumns().add(timeCol);
 
-         TableColumn<Row, String> cModule = new TableColumn<>("Module");
-         cModule.setCellValueFactory(d -> d.getValue().module);
-         table.getColumns().addAll(cDate, cTime, cRoom, cModule);
-         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-         VBox center = new VBox(8, new Label("Schedule (TableView)"), table);
-         center.setPadding(new Insets(12));
-         return center;
+        String[] days = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday"};
+        for(int i = 0; i < days.length; i++){
+            int col = i + 1;
+            TableColumn<String[], String> dayCol = new TableColumn<>(days[i]);
+            dayCol.setCellValueFactory(data -> new SimpleStringProperty(data.getValue()[col]));
+            dayCol.setPrefWidth(150);
+            table.getColumns().add(dayCol);
+        }
+
+        String[] slots = {
+                "09:00-10:00", "10:00-11:00", "11:00-12:00", "12:00-13:00",
+                "14:00-15:00",  "15:00-16:00", "16:00-17:00", "17:00-18:00"
+        };
+        for(String slot : slots){
+            String[] row = new String[6];
+            row[0] = slot;
+            for(int i = 1; i < 6; i++) row[i] = "";
+            table.getItems().add(row);
+        }
+
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        VBox center = new VBox (8, new Label("Schedule (Lm110)"),  table);
+        center.setPadding(new Insets(12));
+        return center;
      }
 
 
@@ -241,24 +254,48 @@ import javafx.application.Platform;
      }
 
      private void parseAndDisplaySchedule(String payload) {
-         table.getItems().clear();
-         if(payload.equals("No Schedule found")) {
+         for(String[] row: table.getItems()){
+             for(int i = 1; i < 6; i++) row[i] = "";
+         }
+         table.refresh();
+         if(payload.equals("No schedule found")) {
              alertInfo("No schedule found");
              return;
          }
          String[] entries = payload.split(";");
-         for(String entry : entries) {
+         for(String entry : entries){
              if(entry.isEmpty()) continue;
              String[] fields = entry.split(",");
-             if(fields.length == 4) {
-                 table.getItems().add(new Row(
-                         fields[0],
-                         fields[1],
-                         fields[2],
-                         fields[3]
-                 ));
+             if(fields.length == 4){
+                 String date  = fields[0];
+                 String time = fields[1];
+                 String room = fields[2];
+                 String module = fields[3];
+
+                 LocalDate localDate = LocalDate.parse(date);
+                 String day = localDate.getDayOfWeek().getDisplayName(
+                         TextStyle.FULL,
+                         Locale.ENGLISH
+                 );
+                 int colIndex = switch (day){
+                     case "Monday" -> 1;
+                     case "Tuesday" -> 2;
+                     case "Wednesday" -> 3;
+                     case "Thursday" -> 4;
+                     case "Friday" -> 5;
+                     default -> -1;
+                 };
+
+                 if(colIndex == -1) continue;
+                 for(String[] row: table.getItems()){
+                     if(row[0].equals(time)){
+                         row[colIndex] = module + "\n" + room;
+                         break;
+                     }
+                 }
              }
          }
+         table.refresh();
      }
 
      private void onClear() {
@@ -335,23 +372,6 @@ import javafx.application.Platform;
          a.setHeaderText("Info");
          a.showAndWait();
      }
-
-
-     public static class Row {
-         final SimpleStringProperty date;
-         final SimpleStringProperty time;
-         final SimpleStringProperty room;
-         final SimpleStringProperty module;
-
-         Row(String date, String time, String room, String module) {
-             this.date = new SimpleStringProperty(date);
-             this.time = new SimpleStringProperty(time);
-             this.room = new SimpleStringProperty(room);
-             this.module = new SimpleStringProperty(module);
-         }
-     }
-
-
 
      public static void main(String[] args) {
          launch(args);

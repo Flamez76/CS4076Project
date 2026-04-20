@@ -3,33 +3,71 @@ package com.example.cs4076lecturescheduler;
 import java.io.*;
 import java.net.*;
 import java.util.*;
+import java.util.Collections;
 
 
 public class _24410764_24436739_Server {
 private static final int PORT = 5000;
 private ServerSocket serverSocket;
-private Socket clientSocket;
-private BufferedReader input;
-private PrintWriter output;
-private HashMap<String, Lecture> schedule = new HashMap<>();
-private Set<String> modules = new  HashSet<>();
+private Map<String, Lecture> schedule = Collections.synchronizedMap(new HashMap<>());
+private Set<String> modules = Collections.synchronizedSet(new HashSet<>());
 
 public void startServer() {
 try{
     serverSocket = new ServerSocket(PORT);
     System.out.println("Server started on port " + PORT);
 
-    clientSocket = serverSocket.accept();
-    System.out.println("Client has been accepted");
+    while(true){
+        Socket clientSocket = serverSocket.accept();
+        System.out.println("New Client connected: " + clientSocket.getInetAddress());
 
-    input = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-    output = new PrintWriter(clientSocket.getOutputStream(), true);
-
-    handleClient();
+        ClientHandler handler = new ClientHandler(clientSocket);
+        new Thread(handler).start();
+     }
     } catch (IOException e){
     e.printStackTrace();
     }
    }
+
+   private class ClientHandler implements Runnable{
+    private Socket clientSocket;
+    private  BufferedReader input;
+    private PrintWriter output;
+
+    ClientHandler(Socket clientSocket){
+        this.clientSocket = clientSocket;
+    }
+    @Override
+    public void run() {
+        try {
+            input = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+            output = new PrintWriter(clientSocket.getOutputStream(), true);
+
+            String message;
+            while((message = input.readLine()) != null){
+                if(message.startsWith("STOP")){
+                    output.println("TERMINATE|Server stopped");
+                    break;
+                }
+                try{
+                    String response = processRequest(message);
+                    output.println(response);
+                } catch(IncorrectActionException e){
+                    output.println("ERROR|" +  e.getMessage());
+                }
+            }
+        } catch (IOException e){
+            e.printStackTrace();
+        }
+    }
+    private void closeConnection() throws IOException {
+        input.close();
+        output.close();
+        clientSocket.close();
+        System.out.println("Client disconnected");
+    }
+   }
+
    private static class Lecture{
     String date;
     String time;
@@ -47,32 +85,8 @@ try{
     }
 
    }
-    private void handleClient() {
-        try {
-            String message;
 
-            while ((message = input.readLine()) != null) {
-                if (message.startsWith("STOP")) {
-                    output.println("TERMINATE|Server stopped");
-                    break;
-                }
-                try {
-                    String response = processRequest(message);
-                    output.println(response);
-                }
-                catch (IncorrectActionException e) {
-                    output.println("ERROR|" + e.getMessage());
-                }
-
-            }
-
-            closeConnection();
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-    private String processRequest(String message) throws IncorrectActionException {
+    private synchronized String processRequest(String message) throws IncorrectActionException {
         String[] parts = message.split("\\|");
         String action = parts[0];
         if(parts.length < 1 || parts[0].isEmpty()){
@@ -96,7 +110,7 @@ try{
                 throw new IncorrectActionException("Action not supported: " + action);
         }
        }
-       private String addLecture(String[] parts) throws IncorrectActionException {
+       private synchronized String addLecture(String[] parts) throws IncorrectActionException {
         if(parts.length < 5) throw new IncorrectActionException("Invalid action");
         String date = parts[1];
         String time = parts[2];
@@ -121,7 +135,7 @@ try{
          modules.add(module);
          return "OK|Lecture added: " + module + " in " + room + " on " + date + " at " + time;
        }
-       private String removeLecture(String[] parts) throws IncorrectActionException {
+       private synchronized String removeLecture(String[] parts) throws IncorrectActionException {
             if(parts.length < 3) throw new IncorrectActionException("REMOVE requires Date and Time");
             String date = parts[1];
             String time = parts[2];
@@ -132,7 +146,7 @@ try{
             }
             return "ERROR|No Lecture found to be removed";
        }
-       private String displaySchedule() {
+       private synchronized String displaySchedule() {
             if(schedule.isEmpty()){
                 return "OK|No schedule found";
             }
@@ -154,14 +168,6 @@ try{
         public IncorrectActionException(String message) {
             super(message);
         }
-      }
-      private void closeConnection() throws IOException {
-            input.close();
-            output.close();
-            clientSocket.close();
-            serverSocket.close();
-
-            System.out.println("Connection closed");
       }
       public static void main(String[] args){
         _24410764_24436739_Server server = new _24410764_24436739_Server();
