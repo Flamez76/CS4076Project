@@ -1,4 +1,4 @@
-package com.example.cs4076lecturescheduler;
+package com.example._24410764_24436739_server;
 
 import java.io.*;
 import java.net.*;
