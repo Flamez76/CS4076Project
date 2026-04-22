@@ -85,8 +85,8 @@ public class _24410764_24436739_Client extends Application {
 
         root.setTop(buildHeader());
         root.setLeft(buildForm());
-        root.setCenter(buildTable());
-        root.setBottom(buildLog());
+        root.setBottom(buildTable());
+        root.setCenter(buildLog());
 
         Scene scene = new Scene(root, 980, 650);
         stage.setTitle("Lecture Scheduler Client ");
@@ -200,7 +200,7 @@ public class _24410764_24436739_Client extends Application {
             for(int i = 1; i < 6; i++) row[i] = "";
             table.getItems().add(row);
         }
-
+        table.setMaxHeight(180);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         VBox center = new VBox (8, new Label("Schedule (Lm110)"),  table);
         center.setPadding(new Insets(12));
