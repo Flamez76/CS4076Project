@@ -9,6 +9,8 @@ import java.util.Collections;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.RecursiveTask;
 import java.util.concurrent.RecursiveAction;
+import javafx.concurrent.Task;
+
 
 
 public class _24410764_24436739_Server {
@@ -55,14 +57,20 @@ public class _24410764_24436739_Server {
                         break;
                     }
                     if(message.startsWith("EARLY")){
-                        new Thread(() -> {
-                            try {
-                                String response = earlyLectures();
-                                output.println(response);
-                            } catch(Exception e){
-                                output.println("ERROR|Early lectures failed: " + e.getMessage());
-                            }
-                        }).start();
+                       Task<String> task = new Task<>(){
+                           @Override
+                           protected String call(){
+                               return earlyLectures();
+                           }
+                       };
+                       task.setOnSucceeded(event -> {
+                           String response = task.getValue();
+                           output.println(response);
+                       });
+                       task.setOnFailed(event -> {
+                           output.println("ERROR|Early Lectures failed: " + task.getException().getMessage());
+                       });
+                       new Thread(task).start();
                     } else {
                         try {
                             String response = processRequest(message);
