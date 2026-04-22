@@ -7,9 +7,8 @@ import java.time.format.TextStyle;
 import java.util.*;
 import java.util.Collections;
 import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.RecursiveTask;
 import java.util.concurrent.RecursiveAction;
-import javafx.concurrent.Task;
+
 
 
 
@@ -57,20 +56,15 @@ public class _24410764_24436739_Server {
                         break;
                     }
                     if(message.startsWith("EARLY")){
-                       Task<String> task = new Task<>(){
-                           @Override
-                           protected String call(){
-                               return earlyLectures();
-                           }
-                       };
-                       task.setOnSucceeded(event -> {
-                           String response = task.getValue();
-                           output.println(response);
-                       });
-                       task.setOnFailed(event -> {
-                           output.println("ERROR|Early Lectures failed: " + task.getException().getMessage());
-                       });
-                       new Thread(task).start();
+                            new Thread(() -> {
+                                try {
+                                    System.out.println("Early thread running");
+                                    String response = earlyLectures();
+                                    output.println(response);
+                                } catch(Exception e){
+                                    output.println("ERROR|Early Lectures failed: " + e.getMessage());
+                                }
+                            }).start();
                     } else {
                         try {
                             String response = processRequest(message);
@@ -163,19 +157,26 @@ public class _24410764_24436739_Server {
     }
 
     private  String earlyLectures(){
-        String[] days = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday"};
-        List<DayShiftingTask> tasks = new ArrayList<>();
-        for(String day : days){
-            tasks.add(new DayShiftingTask(day));
-        }
+        System.out.println("earlyLectures() called");
         ForkJoinPool pool = new ForkJoinPool();
-        for(DayShiftingTask task : tasks){
-            pool.execute(task);
-        }
-        for(DayShiftingTask task : tasks){
-            task.join();
-        }
+        System.out.println("Pool created");
+        pool.invoke(new RecursiveAction(){
+            @Override
+            protected void compute(){
+                System.out.println("compute() called");
+                invokeAll(
+                        new DayShiftingTask("Monday"),
+                        new DayShiftingTask("Tuesday"),
+                        new DayShiftingTask("Wednesday"),
+                        new DayShiftingTask("Thursday"),
+                        new DayShiftingTask("Friday")
+                );
+                System.out.println("invokeAll() complete");
+            }
+        });
+        System.out.println("pool.invokeAll() complete");
         pool.shutdown();
+        System.out.println("Returning displaySchedule");
         return displaySchedule();
     }
 

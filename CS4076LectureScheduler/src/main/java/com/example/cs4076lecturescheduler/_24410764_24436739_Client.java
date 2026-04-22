@@ -6,6 +6,8 @@ import java.util.*;
 
 import javafx.application.Application;
 import static javafx.application.Application.launch;
+
+import javafx.concurrent.Task;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
@@ -225,30 +227,31 @@ public class _24410764_24436739_Client extends Application {
         if("EARLY".equals(action)) {
             statusLabel.setText("Status: Processing...");
             sendBtn.setDisable(true);
-            new Thread(() -> {
-                try {
+            Task<String> task = new Task<>() {
+                @Override
+                protected String call() throws Exception {
                     log("CLIENT> " + request);
                     out.println(request);
-                    String response = in.readLine();
-                    Platform.runLater(() -> {
-                        log("SERVER> " + response);
-                        sendBtn.setDisable(false);
-                        if (response.startsWith("OK|")) {
-                            String payload = response.substring(3);
-                            statusLabel.setText("Status: OK");
-                            parseAndDisplaySchedule(payload);
-                        } else if (response.startsWith("ERROR|")) {
-                            statusLabel.setText("Status: ERROR|");
-                            alertWarn("Server Error: " + response.substring(6));
-                        }
-                    });
-                } catch (Exception e) {
-                    Platform.runLater(() -> {
-                        log("Communication error: " + e.getMessage());
-                        sendBtn.setDisable(false);
-                    });
+                    return in.readLine();
                 }
-            }).start();
+            };
+            task.setOnSucceeded(e -> {
+                String response = task.getValue();
+                log("SERVER> " + response);
+                sendBtn.setDisable(false);
+                if(response.startsWith("OK|")) {
+                    statusLabel.setText("Status: OK");
+                    parseAndDisplaySchedule(response.substring(3));
+                } else if(response.startsWith("ERROR|")) {
+                    statusLabel.setText("Status: ERROR");
+                    alertWarn("Server Error: " +response.substring(6));
+                }
+            });
+            task.setOnFailed(e -> {
+                log("Communication error: " + task.getException().getMessage());
+                sendBtn.setDisable(false);
+            });
+            new  Thread(task).start();
         } else {
             try {
                 log("CLIENT> " + request);
