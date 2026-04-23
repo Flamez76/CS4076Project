@@ -25,17 +25,17 @@ import javafx.scene.control.Button;
 
 
 public class _24410764_24436739_Client extends Application {
-  ComboBox<String> actionBox;
-  DatePicker datePicker;
-  ComboBox<String> timeBox;
-  TextField roomField;
-  TextField moduleField;
-  Button sendBtn;
-  Button clearBtn;
-  Button stopBtn;
-  TextArea logArea;
-  Label statusLabel;
-  TableView<String[]> table;
+    ComboBox<String> actionBox;
+    DatePicker datePicker;
+    ComboBox<String> timeBox;
+    TextField roomField;
+    TextField moduleField;
+    Button sendBtn;
+    Button clearBtn;
+    Button stopBtn;
+    TextArea logArea;
+    Label statusLabel;
+    TableView<String[]> table;
     private ScheduleController controller = new ScheduleController(this);
 
 

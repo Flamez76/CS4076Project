@@ -7,9 +7,7 @@ import javafx.application.Platform;
 import java.time.LocalDate;
 import java.time.format.TextStyle;
 import java.util.Locale;
-
-
-import static java.rmi.server.LogStream.log;
+import javafx.concurrent.Task;
 
 public class ScheduleController {
     private _24410764_24436739_Client view;
@@ -48,7 +46,7 @@ public class ScheduleController {
             String response = in.readLine();
             view.log("SERVER> " + response);
         }  catch(Exception e){
-            log("Error recieving response");
+            view.log("Error recieving response");
         }
         stopped = true;
         view.sendBtn.setDisable(true);
@@ -107,40 +105,46 @@ public class ScheduleController {
         if("EARLY".equals(action)) {
             view.statusLabel.setText("Status: Processing...");
             view.sendBtn.setDisable(true);
-            new Thread(() -> {
-                try {
-                    log("CLIENT> " + request);
+
+            Task<String> earlyTask = new Task<>() {
+                @Override
+                protected String call() throws Exception {
                     out.println(request);
-                    String response = in.readLine();
-                    Platform.runLater(() -> {
-                        log("SERVER> " + response);
-                        view.sendBtn.setDisable(false);
-                        if (response.startsWith("OK|")) {
-                            String payload = response.substring(3);
-                            view.statusLabel.setText("Status: OK");
-                            parseAndDisplaySchedule(payload);
-                        } else if (response.startsWith("ERROR|")) {
-                            view.statusLabel.setText("Status: ERROR|");
-                            view.alertWarn("Server Error: " + response.substring(6));
-                        }
-                    });
-                } catch (Exception e) {
-                    Platform.runLater(() -> {
-                        log("Communication error: " + e.getMessage());
-                        view.sendBtn.setDisable(false);
-                    });
+                    return in.readLine();
                 }
-            }).start();
+            };
+
+            earlyTask.setOnSucceeded(e -> {
+                String response = earlyTask.getValue();
+                view.log("SERVER> " + response);
+                view.sendBtn.setDisable(false);
+                if(response.startsWith("OK|")) {
+                    view.statusLabel.setText("Status: OK");
+                    parseAndDisplaySchedule(response.substring(3));
+                } else if(response.startsWith("ERROR|")) {
+                    view.statusLabel.setText("Status: ERROR");
+                    view.alertWarn("Server Error: " + response.substring(6));
+                }
+            });
+
+            earlyTask.setOnFailed(e -> {
+                view.log("Communication error: " + earlyTask.getException().getMessage());
+                view.sendBtn.setDisable(false);
+                view.statusLabel.setText("Status: ERROR");
+            });
+
+            view.log("CLIENT> " + request);
+            new Thread(earlyTask).start();
         } else {
             try {
-                log("CLIENT> " + request);
+                view.log("CLIENT> " + request);
                 out.println(request);
                 String response = in.readLine();
-                log("SERVER> " + response);
+                view.log("SERVER> " + response);
                 if(response.startsWith("OK|")){
                     String payload = response.substring(3);
                     view.statusLabel.setText("Status: OK|");
-                    if("DISPLAY".equals(action) || "EARLY".equals(action)) {
+                    if("DISPLAY".equals(action)) {
                         parseAndDisplaySchedule(payload);
                     } else {
                         view.alertInfo("Success: " + payload);
@@ -155,7 +159,7 @@ public class ScheduleController {
                     view.sendBtn.setDisable(true);
                 }
             } catch(Exception e) {
-                log("Communication error: " + e.getMessage());
+                view.log("Communication error: " + e.getMessage());
             }
         }
     }
